@@ -1,0 +1,5 @@
+
+venv
+opentelemetry-collector-contrib
+.idea
+__pycache__
