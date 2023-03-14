@@ -16,7 +16,7 @@ os.environ['OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST'] = '.*'
 os.environ['OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE'] = '.*'
 
 resource = Resource(attributes={
-    SERVICE_NAME: 'MyFlaskAppInProduction'
+    SERVICE_NAME: 'MyFlaskAppInProductionContrib'
 })
 provider = TracerProvider(resource=resource)
 processor_grpc = BatchSpanProcessor(OTLPSpanExporter(endpoint='http://0.0.0.0:4317'))
