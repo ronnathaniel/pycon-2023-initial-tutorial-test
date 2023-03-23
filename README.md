@@ -1,5 +1,5 @@
-# PyCon: 
-### How to Monitor and Troubleshoot Applications in Production using OpenTelemetry:
+# PyCon US: 2023
+### How to Monitor and Troubleshoot Applications in Production using OpenTelemetry
 
 
 
@@ -28,6 +28,13 @@
 - [Docker](https://docs.docker.com/engine/install/)
 
 
+Experienced in:
+
+- Python?
+- Flask?
+- OpenTelemetry or Observabilitity?
+
+
 ## Step 1
 > #### Getting the Collector
 
@@ -35,7 +42,9 @@ Clone the OpenTelemetry Collector. In a Terminal, run:
 
 ```bash
 git clone https://github.com/open-telemetry/opentelemetry-collector-contrib.git
+
 cp -r opentelemetry-collector-contrib/examples/demo collector-demo
+
 cd collector-demo
 ```
 
@@ -46,15 +55,15 @@ At `collector-demo/`, read in order:
 
 1) `docker-compose.yaml`
         
-Bring up containers with the OpenTelemetry Collector 
-and 3 observability tools (Jaeger, Zipkin, and Prometheus).
+Brings up containers with the OpenTelemetry Collector 
+and 3 observability tools: Jaeger, Zipkin, and Prometheus.
 
-**Side Note** \
-(Main difference between Jaeger and Zipkin: \
-Zipkin runs as 1 single process, Including Collector, Storage, Querying Service, and UI.  
-Jaeger introduced the concept of splitting into different processes, one being the Collector, another being the UI, etc. 
-
-*Prompt:* Can you guess why?)
+> **Side Note** \
+> (Main difference between Jaeger and Zipkin: \
+> Zipkin runs as 1 single process, Including Collector, Storage, Querying Service, and UI.  
+> Jaeger introduced the concept of splitting into different processes, one being the Collector, another being the UI, etc. 
+> 
+> *Prompt:* Can you guess why?)
 
 
 
@@ -69,18 +78,18 @@ And how we want to export Telemetry (to Prometheus, Zipkin, and Jaeger)
 Defines where we want to gather Metrics Telemetry from (the Otel Collector)
 
 
-## Step 3
+## Step 
 > #### Cleanup
 
-(Personal Choice): Delete the `demo-client` and `demo-server` lines from `docker-compose.yaml`.
+Delete the `demo-client` and `demo-server` lines from `docker-compose.yaml`.
 
 And the `client/` and `server/` directories.
 
 We'll create our own services.
 
 
-## Step 4
-> #### Booting up the Collector 
+## Step 
+> #### Running the Collector 
 
 Lets start the collector locally. In a Terminal, run:
 
@@ -90,23 +99,23 @@ docker compose up
 
 And voila, our collector and observability tools are up and running.
 
-## Step 5
-> #### Inspecting our Toolbox
+## Step 
+> #### Monitoring with our Observability Tools
 
-View your Observability tools at:
-
-
-Jaeger = [localhost:16686](http://0.0.0.0:16686)
-
-Zipkin = [localhost:9411](http://0.0.0.0:9411)
-
-Prometheus = [localhost:9090](http://0.0.0.0:9090)
+View the tools at:
 
 
-## Step 6
-> #### The Base Case
+- Jaeger = [localhost:16686](http://0.0.0.0:16686)
 
-Create a Python file (`flask_bare.py`) with the following:
+- Zipkin = [localhost:9411](http://0.0.0.0:9411)
+
+- Prometheus = [localhost:9090](http://0.0.0.0:9090)
+
+
+## Step 
+> #### The Base Case (not yet instrumented)
+
+Create a Python file (`flask_base.py`) with the following:
 
 ```python
 from flask import Flask
@@ -126,27 +135,29 @@ def error():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-
 ```
 
-And open 2 terminals side by side (`CMD + D`, move between with `CMD + [`).
+And open 2 more terminals side by side (`CMD + D`, move between with `CMD + [` and `CMD + ]`).
 
+
+## Step 
+> #### Testing the Base Case
 
 In the first terminal, run with file with 
 
 ```python
-python3 flask_bare.py
+python3 flask_base.py
 ```
 
-And in the second terminal, ping the server with curl 
+And move to your second terminal.
+
+ -> For a successful response, call the server with: 
 
 ```python
 curl localhost:5000
 ```
 
-for a successful response.
-
-Then, see what happens when you 
+-> For an unsuccessful response, call the server with: 
 
 ```python
 curl localhost:5000/error
@@ -159,25 +170,23 @@ And I want you to tell me (as the client)
 - is the server still up and running?
 - is my application still working or do I need to restart it?
 
-(Rhetorical, of course).
+OpenTelemetry to the rescue...
 
-OpenTelemetry to the rescue!
-
-## Step 7
+## Step 
 > #### The Manual Instrumentation Case
 
 Manual Instrumentation is the hardest but safest of all instrumentations. 
 The developer is in complete control over what gets instrumented, and how.
 
-Create a Python file by duplicating `flask_bare.py` with:
+Create a Python file by duplicating `flask_base.py` with:
 
 ```bash
-cp flask_bare.py flask_instrumentation_manual.py
+cp flask_base.py flask_instrumentation_manual.py
 ```
 
 and let's install our dependencies:
 
-```bash
+```bash 
 pip3 install \
    opentelemetry-api \
    opentelemetry-sdk  \
@@ -197,12 +206,12 @@ from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 
 
 COLLECTOR_ENDPOINT = 'http://0.0.0.0:4317'
-SERVICE_NAME = 'MyFlaskAppInProductionManual'
+MY_SERVICE = 'MyFlaskAppInProductionManual'
 
 resource = Resource(attributes={
-    SERVICE_NAME: SERVICE_NAME
+    SERVICE_NAME: MY_SERVICE
 })
-provider = TracerProvider()
+provider = TracerProvider(resource=resource)
 
 # exports to STDOUT
 processor_console = BatchSpanProcessor(ConsoleSpanExporter())
@@ -225,7 +234,61 @@ def hello():
                 return 'Hello, World!\n'
 ```
 
-## Step 8
+
+
+and our `error()` function at `/error` with
+
+```python
+@app.route('/error')
+def error():
+    with tracer.start_as_current_span('parent') as parent:
+        with tracer.start_as_current_span('child') as child:
+            1 / 0
+```
+
+## Step 
+> #### Testing The Manual Instrumentation Case
+
+In the first terminal, run with file with 
+
+```python
+python3 flask_base.py
+```
+
+And move to your second terminal.
+
+ -> For a successful response, call the server with: 
+
+```python
+curl localhost:5000
+```
+
+-> For an unsuccessful response, call the server with: 
+
+```python
+curl localhost:5000/error
+```
+
+
+
+## Step 
+> #### Monitoring with our Observability Tools
+
+View the tools at:
+
+
+- Jaeger = [localhost:16686](http://0.0.0.0:16686)
+
+- Zipkin = [localhost:9411](http://0.0.0.0:9411)
+
+- Prometheus = [localhost:9090](http://0.0.0.0:9090)
+
+
+
+
+
+
+## Step
 > #### The Contrib Instrumentation Case
 
 Contributed packages include support for third party tools. 
@@ -233,32 +296,94 @@ Contributed packages include support for third party tools.
 Restart our instrumentation with 
 
 ```python
-cp flask_bare.py flask_instrumentation_contrib.py
+cp flask_base.py flask_instrumentation_contrib.py
 ```
 
-and Install the Flask contrib with:
+and Install the Flask contrib package with:
 
 ```bash
 pip3 install opentelemetry-instrumentation-flask
 ```
 
 
-Only 2 lines are needed to instrument 
+Only 2 lines are needed to instrument. The top-level import
+
+```python
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
+```
+
+and 
+
+```python
+FlaskInstrumentor().instrument_app(app, tracer_provider=provider)
+```
+
+given `app` is your flask app object.
+
+
+## Step
+> #### Testing The Contrib Instrumentation Case
 
 
 
-efefe
+In the first terminal, run with file with 
 
-e
-ge
+```python
+python3 flask_base.py
+```
 
-egeg
+And move to your second terminal.
+
+ -> For a successful response, call the server with: 
+
+```python
+curl localhost:5000
+```
+
+-> For an unsuccessful response, call the server with: 
+
+```python
+curl localhost:5000/error
+```
+
+## Step 
+> #### Monitoring with our Observability Tools
+
+View the tools at:
 
 
-egeg
+- Jaeger = [localhost:16686](http://0.0.0.0:16686)
+
+- Zipkin = [localhost:9411](http://0.0.0.0:9411)
+
+- Prometheus = [localhost:9090](http://0.0.0.0:9090)
 
 
-egeg
+## Step
+> #### The No Code Instrumentation Case 
 
 
-egeg
+
+Our only dependency to install is:
+
+```python
+pip3 install opentelemetry-distro
+```
+
+and we must bootstrap it with:
+
+```python
+opentelemetry-bootstrap -a install 
+```
+
+## Step
+> #### Testing The No Code Instrumentation Case
+
+Our method of running our application must change to
+
+```bash
+opentelemetry-instrument --traces_exporter otlp,console --service_name MyFlaskAppInProductionAuto --exporter_otlp_endpoint http://localhost:4317 python3 ${1:-flask_base.py}
+```
+
+
+
