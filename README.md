@@ -6,8 +6,38 @@
 
 ## Table of Contents
 - [Pre-Reqs](#pre-requirements)
-- [Step 1: Getting the Collector](#step-1)
-- [Step 2: Inspecting the Source Code](#step-2)
+- [Step 1 - Getting the Collector](#step-1)
+- [Step 2 - Inspecting the Source Code](#step-2)
+- [Step 3 - Cleanup](#step-3)
+- [Step 4 - Running the Collector](#step-4)
+- [Step 5 - Monitoring with our Observability Tools](#step-5)
+
+> Base Case: 
+
+- [Step 6 - The **BASE** Case](#step-6)
+- [Step 7 - Testing the Base Case](#step-7)
+
+> Manual Instrumentation Case:
+
+- [Step 8 - The **MANUAL** Instrumentation Case](#step-8)
+- [Step 9 - Testing The Manual Instrumentation Case](#step-9)
+- [Step 10 - Monitoring The Manual Instrumentation Case](#step-10)
+
+> Contrib Instrumentation Case:
+
+- [Step 11 - The **CONTRIB** Instrumentation Case](#step-11)
+- [Step 12 - Testing The Contrib Instrumentation Case](#step-12)
+- [Step 13 - Monitoring The Contrib Instrumentation Case](#step-13)
+
+> No-Code Instrumentation Case:
+
+- [Step 14 - The **NO CODE** Instrumentation Case](#step-14)
+- [Step 15 - Testing The No Code Instrumentation Case](#step-15)
+- [Step 16 - Monitoring The No Code Instrumentation Case](#step-16)
+
+> Conclusion
+
+- [Step 17 - What did we learn?](#step-17) 
 
 
 
@@ -28,10 +58,10 @@
 - [Docker](https://docs.docker.com/engine/install/)
 
 
-Experienced in:
+Are you experienced in:
 
 - Python?
-- Flask?
+- Flask or Web servers?
 - OpenTelemetry or Observabilitity?
 
 
@@ -78,7 +108,7 @@ And how we want to export Telemetry (to Prometheus, Zipkin, and Jaeger)
 Defines where we want to gather Metrics Telemetry from (the Otel Collector)
 
 
-## Step 
+## Step 3
 > #### Cleanup
 
 Delete the `demo-client` and `demo-server` lines from `docker-compose.yaml`.
@@ -88,7 +118,7 @@ And the `client/` and `server/` directories.
 We'll create our own services.
 
 
-## Step 
+## Step 4
 > #### Running the Collector 
 
 Lets start the collector locally. In a Terminal, run:
@@ -99,7 +129,7 @@ docker compose up
 
 And voila, our collector and observability tools are up and running.
 
-## Step 
+## Step 5
 > #### Monitoring with our Observability Tools
 
 View the tools at:
@@ -112,7 +142,7 @@ View the tools at:
 - Prometheus = [localhost:9090](http://0.0.0.0:9090)
 
 
-## Step 
+## Step 6
 > #### The Base Case (not yet instrumented)
 
 Create a Python file (`flask_base.py`) with the following:
@@ -140,7 +170,7 @@ if __name__ == '__main__':
 And open 2 more terminals side by side (`CMD + D`, move between with `CMD + [` and `CMD + ]`).
 
 
-## Step 
+## Step 7
 > #### Testing the Base Case
 
 In the first terminal, run with file with 
@@ -172,7 +202,7 @@ And I want you to tell me (as the client)
 
 OpenTelemetry to the rescue...
 
-## Step 
+## Step 8
 > #### The Manual Instrumentation Case
 
 Manual Instrumentation is the hardest but safest of all instrumentations. 
@@ -246,13 +276,13 @@ def error():
             1 / 0
 ```
 
-## Step 
+## Step 9
 > #### Testing The Manual Instrumentation Case
 
 In the first terminal, run with file with 
 
 ```python
-python3 flask_base.py
+python3 flask_instrumentation_manual.py
 ```
 
 And move to your second terminal.
@@ -271,8 +301,8 @@ curl localhost:5000/error
 
 
 
-## Step 
-> #### Monitoring with our Observability Tools
+## Step 10
+> #### Monitoring The Manual Instrumentation Case
 
 View the tools at:
 
@@ -288,7 +318,7 @@ View the tools at:
 
 
 
-## Step
+## Step 11
 > #### The Contrib Instrumentation Case
 
 Contributed packages include support for third party tools. 
@@ -321,7 +351,7 @@ FlaskInstrumentor().instrument_app(app, tracer_provider=provider)
 given `app` is your flask app object.
 
 
-## Step
+## Step 12
 > #### Testing The Contrib Instrumentation Case
 
 
@@ -329,7 +359,7 @@ given `app` is your flask app object.
 In the first terminal, run with file with 
 
 ```python
-python3 flask_base.py
+python3 flask_instrumentation_contrib.py
 ```
 
 And move to your second terminal.
@@ -346,8 +376,8 @@ curl localhost:5000
 curl localhost:5000/error
 ```
 
-## Step 
-> #### Monitoring with our Observability Tools
+## Step 13
+> #### Monitoring The Contrib Instrumentation Case
 
 View the tools at:
 
@@ -359,7 +389,7 @@ View the tools at:
 - Prometheus = [localhost:9090](http://0.0.0.0:9090)
 
 
-## Step
+## Step 14
 > #### The No Code Instrumentation Case 
 
 
@@ -376,14 +406,75 @@ and we must bootstrap it with:
 opentelemetry-bootstrap -a install 
 ```
 
-## Step
+## Step 15
 > #### Testing The No Code Instrumentation Case
 
 Our method of running our application must change to
 
 ```bash
-opentelemetry-instrument --traces_exporter otlp,console --service_name MyFlaskAppInProductionAuto --exporter_otlp_endpoint http://localhost:4317 python3 ${1:-flask_base.py}
+opentelemetry-instrument --traces_exporter otlp,console --service_name MyFlaskAppInProductionAuto --exporter_otlp_endpoint http://localhost:4317 python3 flask_base.py
 ```
 
+Now lets break that command ^ down.
+
+- `opentelemetry-instrument` = a command line tool which auto-instruments Python files.
+
+- `--traces_exporter otlp,console` = flag to declare we will export our spans/traces via OTLP and our local Console (stdout).
+
+- `--service_name MyFlaskAppInProductionAuto` = flag to declare our OpenTelemetry's Service name.
+
+- `--exporter_otlp_endpoint http://localhost:4317` = a flag to declare exactly *where* we will send our OTLP spans.
+
+- `python3 flask_base.py` = we tell `opentelemetry-instrument` how we usually run our application. 
+This allows the CLI tool to run it for us.
 
 
+Paste the command above into a file named `flask_instrumentation_nocode.sh`.
+
+Be sure to `chmod +x flask_instrumentation_nocode.sh` to make it executable!
+
+
+In the first terminal, run our new file with
+
+    ./flask_instrumentation_nocode.sh
+
+And move to your second terminal.
+
+ -> For a successful response, call the server with: 
+
+```python
+curl localhost:5000
+```
+
+-> For an unsuccessful response, call the server with: 
+
+```python
+curl localhost:5000/error
+```
+
+## Step 16
+> #### Monitoring The No Code Instrumentation Case
+
+
+View the tools at:
+
+
+- Jaeger = [localhost:16686](http://0.0.0.0:16686)
+
+- Zipkin = [localhost:9411](http://0.0.0.0:9411)
+
+- Prometheus = [localhost:9090](http://0.0.0.0:9090)
+
+
+## Step 17
+> #### What did we learn?
+
+
+Can you answer these questions:
+
+
+-     What is Observability?
+-     What is OpenTelemetry?
+-     What App Observability tools exist? 
+-     With what methods can I instrument my app with OpenTelemetry?
+-     When should I use each?
